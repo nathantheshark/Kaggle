@@ -65,7 +65,7 @@ tag_type = np.array(tag_type)
 print "Training data loaded successfully!"
 
 ''' Pre-process training data '''
-X = np.vstack((latitude, longitude)).T
+X = np.vstack((latitude, longitude, summary, source, created_time, tag_type)).T
 y = np.vstack((num_votes, num_comments, num_views)).T
 print X
 print y
