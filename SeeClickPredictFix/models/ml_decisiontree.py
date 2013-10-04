@@ -20,6 +20,7 @@ import time
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.feature_extraction import DictVectorizer
 from sklearn import cross_validation
+from sklearn.metrics import make_scorer
 
 ''' Functions and classes '''
 def loss(p_num_votes, p_num_comments, p_num_views, a_num_votes, a_num_comments, a_num_views):
@@ -31,16 +32,22 @@ def loss(p_num_votes, p_num_comments, p_num_views, a_num_votes, a_num_comments, 
     log_a_num_votes = np.log(a_num_votes + 1)
     log_a_num_comments = np.log(a_num_comments + 1)
     log_a_num_views = np.log(a_num_views + 1)
-    print (log_p_num_votes).shape
-    print (log_a_num_votes).shape
-    print log_p_num_votes
-    print log_a_num_votes
-    raw_input()
     sum_num_votes = np.sum(np.square(log_p_num_votes - log_a_num_votes))
     sum_num_comments = np.sum(np.square(log_p_num_comments - log_a_num_comments))
     sum_num_views = np.sum(np.square(log_p_num_views - log_a_num_views))
     rmsle = np.sqrt((sum_num_votes + sum_num_comments + sum_num_views) / n)
     return rmsle
+
+def scorer_loss(y_predicted, y):
+    rmsle = loss(y_predicted[:, 0], y_predicted[:, 1], y_predicted[:, 2], y[:, 0], y[:, 1], y[:, 2])
+    return rmsle
+
+##def scorer_rmsle(clf, X, y):
+    ##clf.fit(X, y)
+    ##y_predicted = clf.predict(X)
+    ##rmsle = loss(y_predicted[:, 0], y_predicted[:, 1], y_predicted[:, 2], y[:, 0], y[:, 1], y[:, 2])
+    ##return rmsle
+    
 
 ''' Load data '''
 # load training data into dict
@@ -64,8 +71,8 @@ print "Training data loaded successfully!"
 
 ''' Pre-process training data '''
 # select which variables to fit the model on
-X_vars = ['latitude', 'longitude', 'source']
-y_vars = ['num_votes']
+X_vars = ['latitude', 'longitude', 'source', 'tag_type']
+y_vars = ['num_votes', 'num_comments', 'num_views']
 X = []
 y = []
 for d in data:
@@ -81,19 +88,74 @@ X_encoded = vec.fit_transform(X).toarray()
 y_encoded = vec.fit_transform(y).toarray()
 # separate training/testing data
 X_train, X_test, y_train, y_test = cross_validation.train_test_split(X_encoded, y_encoded, test_size=0.3)
-print y_train.shape
-print y_test.shape
+# remove unneeded dimension
+y_train = np.squeeze(y_train)
+y_test = np.squeeze(y_test)
 
 ''' Begin building the model on training data'''
 # decision tree model
-clf = DecisionTreeRegressor(max_depth=2)
+depth = 12    # 12 is optimal for num_votes
+print "max_depth =", depth
+clf = DecisionTreeRegressor(max_depth=depth)
 clf.fit(X_train, y_train)
 y_train_predicted = clf.predict(X_train)
-y_test_predicted = clf.predict(X_test)[0:]
-print y_train_predicted.shape
-print y_test_predicted.shape
-raw_input()
-train_loss = loss(y_train_predicted, np.zeros(y_train.shape),  np.zeros(y_train.shape),  y_train, np.zeros(y_train.shape),  np.zeros(y_train.shape))
-test_loss = loss(y_test_predicted, np.zeros(y_test.shape), np.zeros(y_test.shape), y_test, np.zeros(y_test.shape), np.zeros(y_test.shape))
+y_test_predicted = clf.predict(X_test)
+train_loss = loss(y_train_predicted[:, 0], y_train_predicted[:, 1],  y_train_predicted[:, 2],  y_train[:, 0], y_train[:, 1],  y_train[:, 2])
+test_loss = loss(y_test_predicted[:, 0], y_test_predicted[:, 1], y_test_predicted[:, 2], y_test[:, 0], y_test[:, 1], y_test[:, 2])
 print "Train loss =", train_loss
 print "Test loss =", test_loss
+#####
+#raw_input("New cv method")
+#clf_new = DecisionTreeRegressor(max_depth=depth)
+#custom_scorer = make_scorer(scorer_loss, greater_is_better=False)
+#scores = cross_validation.cross_val_score(clf_new, X_encoded, y_encoded, cv=5, scoring=custom_scorer)
+#print scores
+#clf_new.fit(X_encoded, y_encoded)
+#print scorer_loss(clf_new.predict(X_encoded), y_encoded)
+#raw_input("/New cv method")
+#####
+
+''' Load test data '''
+# load test data into dict
+data = []
+file_name = "../data/test.csv"
+reader = csv.DictReader(open(file_name, 'rb'), delimiter=',', quotechar='"')
+for row in reader:
+    data.append(row)
+
+# convert appropriate keys from string to appropriate type
+for sub in data:
+    for key in sub:
+        if key == 'id' or key == 'num_votes' or key == 'num_comments' or key == 'num_views':
+            sub[key] = int(sub[key])
+        elif key == 'latitude' or key =='longitude':
+            sub[key] = float(sub[key])
+        elif key == 'created_time':
+            sub[key] = time.strptime(sub[key], "%Y-%m-%d %H:%M:%S")
+
+print "Testing data loaded successfully!"
+
+''' Pre-process test data '''
+# select which variables to fit the model on
+X = []
+for d in data:
+    subdict_X = dict([(i, d[i]) for i in X_vars if i in d])
+    X.append(subdict_X)
+    
+# encode categorical variables in X
+vec = DictVectorizer()
+X_encoded = vec.fit_transform(X).toarray()
+
+''' Fit model to test data '''
+y_predicted = clf.predict(X_encoded)
+print "Testing model fit!"
+
+''' Write submission file for test data '''
+raw_input("Press enter to write submission file")
+id_list = [d['id'] for d in data]
+id_list = np.array(id_list)[:, np.newaxis]
+header_text = "id,num_views,num_votes,num_comments"
+submission_fname = "../submissions/submission.csv"
+output_array = np.hstack((id_list, y_predicted))
+np.savetxt(submission_fname, output_array, delimiter=",", header=header_text, fmt="%f")
+print "Submission file written to '", submission_fname, "'"
