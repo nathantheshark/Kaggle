@@ -65,13 +65,13 @@ for sub in data:
         elif key == 'latitude' or key =='longitude':
             sub[key] = float(sub[key])
         elif key == 'created_time':
-            sub[key] = time.strptime(sub[key], "%Y-%m-%d %H:%M:%S")
+            sub[key] = time.mktime(time.strptime(sub[key], "%Y-%m-%d %H:%M:%S"))    # make time into datetime (float)
 
 print "Training data loaded successfully!"
 
 ''' Pre-process training data '''
 # select which variables to fit the model on
-X_vars = ['latitude', 'longitude', 'source', 'tag_type']
+X_vars = ['latitude', 'longitude', 'source', 'tag_type', 'created_time']
 y_vars = ['num_votes', 'num_comments', 'num_views']
 X = []
 y = []
@@ -82,19 +82,20 @@ for d in data:
     y.append(subdict_y)
     
 # encode categorical variables in X
-vec = DictVectorizer()
-X_encoded = vec.fit_transform(X).toarray()
+vec_X = DictVectorizer()
+vec_y = DictVectorizer()
+X_encoded = vec_X.fit_transform(X).toarray()
 # convert y into proper numpy array
-y_encoded = vec.fit_transform(y).toarray()
+y_encoded = vec_y.fit_transform(y).toarray()
 # separate training/testing data
-X_train, X_test, y_train, y_test = cross_validation.train_test_split(X_encoded, y_encoded, test_size=0.3)
+X_train, X_test, y_train, y_test = cross_validation.train_test_split(X_encoded, y_encoded, test_size=0.5)
 # remove unneeded dimension
 y_train = np.squeeze(y_train)
 y_test = np.squeeze(y_test)
 
 ''' Begin building the model on training data'''
 # decision tree model
-depth = 12    # 12 is optimal for num_votes
+depth = 12 # 12 is optimal for num_votes
 print "max_depth =", depth
 clf = DecisionTreeRegressor(max_depth=depth)
 clf.fit(X_train, y_train)
@@ -105,14 +106,14 @@ test_loss = loss(y_test_predicted[:, 0], y_test_predicted[:, 1], y_test_predicte
 print "Train loss =", train_loss
 print "Test loss =", test_loss
 #####
-#raw_input("New cv method")
-#clf_new = DecisionTreeRegressor(max_depth=depth)
-#custom_scorer = make_scorer(scorer_loss, greater_is_better=False)
-#scores = cross_validation.cross_val_score(clf_new, X_encoded, y_encoded, cv=5, scoring=custom_scorer)
-#print scores
-#clf_new.fit(X_encoded, y_encoded)
-#print scorer_loss(clf_new.predict(X_encoded), y_encoded)
-#raw_input("/New cv method")
+raw_input("New cv method")
+clf_new = DecisionTreeRegressor(max_depth=depth)
+custom_scorer = make_scorer(scorer_loss, greater_is_better=False)
+scores = cross_validation.cross_val_score(clf_new, X_encoded, y_encoded, cv=5, scoring=custom_scorer)
+print scores
+clf_new.fit(X_encoded, y_encoded)
+print scorer_loss(clf_new.predict(X_encoded), y_encoded)
+raw_input("/New cv method")
 #####
 
 ''' Load test data '''
@@ -131,7 +132,7 @@ for sub in data:
         elif key == 'latitude' or key =='longitude':
             sub[key] = float(sub[key])
         elif key == 'created_time':
-            sub[key] = time.strptime(sub[key], "%Y-%m-%d %H:%M:%S")
+            sub[key] = time.mktime(time.strptime(sub[key], "%Y-%m-%d %H:%M:%S"))
 
 print "Testing data loaded successfully!"
 
@@ -144,7 +145,7 @@ for d in data:
     
 # encode categorical variables in X
 vec = DictVectorizer()
-X_encoded = vec.fit_transform(X).toarray()
+X_encoded = vec_X.transform(X).toarray()
 
 ''' Fit model to test data '''
 y_predicted = clf.predict(X_encoded)
