@@ -38,7 +38,7 @@ def loss(p_num_votes, p_num_comments, p_num_views, a_num_votes, a_num_comments, 
     rmsle = np.sqrt((sum_num_votes + sum_num_comments + sum_num_views) / n)
     return rmsle
 
-def scorer_loss(y_predicted, y):
+def scorer_loss(y, y_predicted):
     rmsle = loss(y_predicted[:, 0], y_predicted[:, 1], y_predicted[:, 2], y[:, 0], y[:, 1], y[:, 2])
     return rmsle
 
@@ -117,14 +117,17 @@ print "Train loss =", train_loss
 print "Test loss =", test_loss
 
 #####
-#raw_input("New cv method")
-#clf_new = DecisionTreeRegressor(max_depth=depth)
-#custom_scorer = make_scorer(scorer_loss, greater_is_better=False)
-#scores = cross_validation.cross_val_score(clf_new, X_encoded, y_encoded, cv=5, scoring=custom_scorer)
-#print scores
-#clf_new.fit(X_encoded, y_encoded)
-#print scorer_loss(clf_new.predict(X_encoded), y_encoded)
-#raw_input("/New cv method")
+raw_input("New cv method")
+clf_new = DecisionTreeRegressor(max_depth=depth)
+rmsle_scorer = make_scorer(scorer_loss, greater_is_better=False)
+scores = cross_validation.cross_val_score(clf_new, X_encoded, y=y_encoded, scoring=rmsle_scorer, cv=50)
+scores = -scores
+print scores
+print "mean =", scores.mean()
+print "stdev =", scores.std()
+clf_new.fit(X_encoded, y_encoded)
+print scorer_loss(y_encoded, clf_new.predict(X_encoded))
+raw_input("/New cv method")
 #####
 
 ''' Load test data '''
