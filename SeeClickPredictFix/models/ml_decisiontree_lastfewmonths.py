@@ -117,7 +117,7 @@ print "Train loss =", train_loss
 print "Test loss =", test_loss
 
 #####
-raw_input("New cv method")
+print "New cv method"
 clf_new = DecisionTreeRegressor(max_depth=depth)
 rmsle_scorer = make_scorer(scorer_loss, greater_is_better=False)
 scores = cross_validation.cross_val_score(clf_new, X_encoded, y=y_encoded, scoring=rmsle_scorer, cv=50)
