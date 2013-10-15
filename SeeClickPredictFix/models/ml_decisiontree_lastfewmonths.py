@@ -88,47 +88,50 @@ X_encoded = vec_X.fit_transform(X).toarray()
 # convert y into proper numpy array
 y_encoded = vec_y.fit_transform(y).toarray()
 
-
+print "month cutoff, depth, test score mean, test score stdev"
 # remove all data before time_cutoff
-month = 4
-time_cutoff = time.mktime(time.strptime("2013-" + str(month) + "-1 0:0:0", "%Y-%m-%d %H:%M:%S"))
-created_time_index = vec_X.get_feature_names().index('created_time')
-X_encoded = X_encoded[X_encoded[:, created_time_index] < time_cutoff]
-y_encoded = y_encoded[X_encoded[:, created_time_index] < time_cutoff]
+for month in range(1, 12+1):
+    #month = 4
+    time_cutoff = time.mktime(time.strptime("2012-" + str(month) + "-1 0:0:0", "%Y-%m-%d %H:%M:%S"))
+    created_time_index = vec_X.get_feature_names().index('created_time')
+    X_encoded = X_encoded[X_encoded[:, created_time_index] > time_cutoff]
+    y_encoded = y_encoded[X_encoded[:, created_time_index] > time_cutoff]
+    
+    # separate training/testing data
+    X_train, X_test, y_train, y_test = cross_validation.train_test_split(X_encoded, y_encoded, test_size=0.3)
+    # remove unneeded dimension
+    y_train = np.squeeze(y_train)
+    y_test = np.squeeze(y_test)
+    
+    ''' Begin building the model on training data'''
+    # decision tree model
+    for depth in range(6, 25+1):
+        #depth = 15 # 12 is optimal for num_votes
+        #print "max_depth =", depth
+        clf = DecisionTreeRegressor(max_depth=depth)
+        clf.fit(X_train, y_train)
+        y_train_predicted = clf.predict(X_train)
+        y_test_predicted = clf.predict(X_test)
+        train_loss = loss(y_train_predicted[:, 0], y_train_predicted[:, 1],  y_train_predicted[:, 2],  y_train[:, 0], y_train[:, 1],  y_train[:, 2])
+        test_loss = loss(y_test_predicted[:, 0], y_test_predicted[:, 1], y_test_predicted[:, 2], y_test[:, 0], y_test[:, 1], y_test[:, 2])
+        #print "month cutoff =", month
+        #print "Train loss =", train_loss
+        #print "Test loss =", test_loss
+        
+        # cross validation
+        clf_new = DecisionTreeRegressor(max_depth=depth)
+        rmsle_scorer = make_scorer(scorer_loss, greater_is_better=False)
+        n_samples = X_encoded.shape[0]
+        cv = cross_validation.ShuffleSplit(n_samples, n_iter=10, test_size=0.3)
+        scores = cross_validation.cross_val_score(clf_new, X_encoded, y=y_encoded, scoring=rmsle_scorer, cv=cv)
+        scores = -scores
+        #print scores
+        #print "test score mean =", scores.mean()
+        #print "test score stdev =", scores.std()
+        print month, depth, scores.mean(), scores.std()
+        clf_new.fit(X_encoded, y_encoded)
 
-# separate training/testing data
-X_train, X_test, y_train, y_test = cross_validation.train_test_split(X_encoded, y_encoded, test_size=0.3)
-# remove unneeded dimension
-y_train = np.squeeze(y_train)
-y_test = np.squeeze(y_test)
-
-''' Begin building the model on training data'''
-# decision tree model
-depth = 15 # 12 is optimal for num_votes
-print "max_depth =", depth
-clf = DecisionTreeRegressor(max_depth=depth)
-clf.fit(X_train, y_train)
-y_train_predicted = clf.predict(X_train)
-y_test_predicted = clf.predict(X_test)
-train_loss = loss(y_train_predicted[:, 0], y_train_predicted[:, 1],  y_train_predicted[:, 2],  y_train[:, 0], y_train[:, 1],  y_train[:, 2])
-test_loss = loss(y_test_predicted[:, 0], y_test_predicted[:, 1], y_test_predicted[:, 2], y_test[:, 0], y_test[:, 1], y_test[:, 2])
-print "month =", month
-print "Train loss =", train_loss
-print "Test loss =", test_loss
-
-#####
-print "New cv method"
-clf_new = DecisionTreeRegressor(max_depth=depth)
-rmsle_scorer = make_scorer(scorer_loss, greater_is_better=False)
-scores = cross_validation.cross_val_score(clf_new, X_encoded, y=y_encoded, scoring=rmsle_scorer, cv=50)
-scores = -scores
-print scores
-print "mean =", scores.mean()
-print "stdev =", scores.std()
-clf_new.fit(X_encoded, y_encoded)
-print scorer_loss(y_encoded, clf_new.predict(X_encoded))
-raw_input("/New cv method")
-#####
+raw_input("!!!!")
 
 ''' Load test data '''
 # load test data into dict
@@ -162,7 +165,7 @@ vec = DictVectorizer()
 X_encoded = vec_X.transform(X).toarray()
 
 # remove all data before time_cutoff
-X_encoded = X_encoded[X_encoded[:, created_time_index] < time_cutoff]
+X_encoded = X_encoded[X_encoded[:, created_time_index] > time_cutoff]
 
 ''' Fit model to test data '''
 y_predicted = clf.predict(X_encoded)
