@@ -88,33 +88,39 @@ X_encoded = vec_X.fit_transform(X).toarray()
 # convert y into proper numpy array
 y_encoded = vec_y.fit_transform(y).toarray()
 # separate training/testing data
-X_train, X_test, y_train, y_test = cross_validation.train_test_split(X_encoded, y_encoded, test_size=0.5)
+#X_train, X_test, y_train, y_test = cross_validation.train_test_split(X_encoded, y_encoded, test_size=0.3)
 # remove unneeded dimension
-y_train = np.squeeze(y_train)
-y_test = np.squeeze(y_test)
+#y_train = np.squeeze(y_train)
+#y_test = np.squeeze(y_test)
 
 ''' Begin building the model on training data'''
 # decision tree model
 depth = 12 # 12 is optimal for num_votes
 print "max_depth =", depth
 clf = DecisionTreeRegressor(max_depth=depth)
-clf.fit(X_train, y_train)
-y_train_predicted = clf.predict(X_train)
-y_test_predicted = clf.predict(X_test)
-train_loss = loss(y_train_predicted[:, 0], y_train_predicted[:, 1],  y_train_predicted[:, 2],  y_train[:, 0], y_train[:, 1],  y_train[:, 2])
-test_loss = loss(y_test_predicted[:, 0], y_test_predicted[:, 1], y_test_predicted[:, 2], y_test[:, 0], y_test[:, 1], y_test[:, 2])
-print "Train loss =", train_loss
-print "Test loss =", test_loss
-#####
-raw_input("New cv method")
-clf_new = DecisionTreeRegressor(max_depth=depth)
-custom_scorer = make_scorer(scorer_loss, greater_is_better=False)
-scores = cross_validation.cross_val_score(clf_new, X_encoded, y_encoded, cv=5, scoring=custom_scorer)
-print scores
-clf_new.fit(X_encoded, y_encoded)
-print scorer_loss(clf_new.predict(X_encoded), y_encoded)
-raw_input("/New cv method")
-#####
+clf.fit(X_encoded, y_encoded)
+# select import features, replace X_encoded
+print "before shape =", X_encoded.shape
+X_encoded = clf.fit(X_encoded, y_encoded).transform(X_encoded)
+print "after shape =", X_encoded.shape
+
+#y_train_predicted = clf.predict(X_train)
+#y_test_predicted = clf.predict(X_test)
+#train_loss = loss(y_train_predicted[:, 0], y_train_predicted[:, 1],  y_train_predicted[:, 2],  y_train[:, 0], y_train[:, 1],  y_train[:, 2])
+#test_loss = loss(y_test_predicted[:, 0], y_test_predicted[:, 1], y_test_predicted[:, 2], y_test[:, 0], y_test[:, 1], y_test[:, 2])
+#print "Train loss =", train_loss
+#print "Test loss =", test_loss
+
+# cross validation
+clf_cv = DecisionTreeRegressor(max_depth=depth)
+rmsle_scorer = make_scorer(scorer_loss, greater_is_better=False)
+n_samples = X_encoded.shape[0]
+cv = cross_validation.ShuffleSplit(n_samples, n_iter=10, test_size=0.3)
+scores = cross_validation.cross_val_score(clf_cv, X_encoded, y=y_encoded, scoring=rmsle_scorer, cv=cv)
+scores = -scores
+print "Test loss mean =", scores.mean()
+print "Test loss stdev =", scores.std()
+
 
 ''' Load test data '''
 # load test data into dict

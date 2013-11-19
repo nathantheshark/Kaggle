@@ -90,9 +90,9 @@ y_encoded = vec_y.fit_transform(y).toarray()
 
 print "month cutoff, depth, test score mean, test score stdev"
 # remove all data before time_cutoff
-for month in range(1, 12+1):
+for month in range(3, 4+1):
     #month = 4
-    time_cutoff = time.mktime(time.strptime("2012-" + str(month) + "-1 0:0:0", "%Y-%m-%d %H:%M:%S"))
+    time_cutoff = time.mktime(time.strptime("2013-" + str(month) + "-1 0:0:0", "%Y-%m-%d %H:%M:%S"))
     created_time_index = vec_X.get_feature_names().index('created_time')
     X_encoded = X_encoded[X_encoded[:, created_time_index] > time_cutoff]
     y_encoded = y_encoded[X_encoded[:, created_time_index] > time_cutoff]
@@ -105,7 +105,7 @@ for month in range(1, 12+1):
     
     ''' Begin building the model on training data'''
     # decision tree model
-    for depth in range(6, 25+1):
+    for depth in range(1, 25+1):
         #depth = 15 # 12 is optimal for num_votes
         #print "max_depth =", depth
         clf = DecisionTreeRegressor(max_depth=depth)
