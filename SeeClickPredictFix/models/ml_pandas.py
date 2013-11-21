@@ -76,7 +76,25 @@ df["log_num_comments"] = np.log(df["num_comments"] + 1)
 df["log_num_views"] = np.log(df["num_views"] + 1)
 df["log_num_votes"] = np.log(df["num_votes"] + 1)
 
+# vectorize source field to binary indicator variables
+vectorizer = CountVectorizer()
+source_vec = vectorizer.fit_transform(df['source'])
+df['source_vec'] = source_vec
+
+# vectorize tag_type field to binary indicator variables
+vectorizer = CountVectorizer()
+tag_type_vec = vectorizer.fit_transform(df['tag_type'])
+df['tag_type_vec'] = tag_type_vec
 
 
 ''' Build the model '''
+features = ['latitude','longitude','source_vec','tag_type_vec','has_descr','summary_tfidf','city']
+targets = ['log_num_comments','log_num_views','log_num_votes']
+X= df[features]
+clf_lst = [linear_model.LinearRegression()] * len(targets)
 
+for t in targets:
+    y = df[t]
+    i = targets.index(t)
+    clf_lst[i].fit(X, y)
+    
