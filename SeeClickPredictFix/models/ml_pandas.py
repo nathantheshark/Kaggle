@@ -24,6 +24,8 @@ from sklearn.cluster import KMeans
 from sklearn import linear_model
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
+from sklearn.feature_extraction.text import TfidfVectorizer
+
 
 ''' Functions and classes '''
 
@@ -65,10 +67,8 @@ has_descr = df['description'] != ""
 df["has_descr"] = has_descr
 
 # add text feature extractor to summary
-vectorizer = CountVectorizer(min_df=1)
-desc_vec = vectorizer.fit_transform(df['summary'])
-transformer = TfidfTransformer()
-tfidf = transformer.fit_transform(desc_vec)
+vectorizer = TfidfVectorizer(min_df=1)
+tfidf = vectorizer.fit_transform(df['summary'])
 df["summary_tfidf"] = tfidf
 
 # transpose y vars (num_comments, num_views, num_votes) to ln(var + 1)
